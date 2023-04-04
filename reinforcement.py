@@ -120,21 +120,40 @@ def actualAction(self, action):
     return actionVal
 
 #this determines the next state for the RL/Q value part of this, WIP
-def nextState(self, action):
+def newState(self, action):
+    # 1 = east 2 = north 3 = west 4 = south
     global nextState, state
     match action:
         case 1:
-            nextState = [self.state[0], self.state[1]+1]
+            if self.state[1] + 1 > horizontal:
+                nextState = self.state
+            else:
+                nextState = [self.state[0], self.state[1] + 1]
         case 2:
-            nextState = [self.state[0], self.state[1] + 1]
+            if self.state[0] - 1 < 0:
+                nextState = self.state
+            else:
+                nextState = [self.state[0] - 1, self.state[1]]
         case 3:
-            nextState = [self.state[0], self.state[1] + 1]
+            if self.state[1] - 1 < 0:
+                nextState = self.state
+            else:
+                nextState = [self.state[0], self.state[1] - 1]
         case 4:
-            nextState = [self.state[0], self.state[1] + 1]
+            if self.state[0] + 1 > vertical:
+                nextState = self.state
+            else:
+                nextState = [self.state[0] + 1, self.state[1]]
 
 #another helper for the RL/Q value part of this assignment
-def chooseAction(self):
+def chooseActionStoch(self):
     return numpy.choice([1, 2, 3, 4])
+
+def chooseActionVIter(self):
+    return self
+
+# Helper for the MDP of the assignment
+def valueIter(grid, )
 
 if __name__ == "__main__":
     #Opens files given on command line
