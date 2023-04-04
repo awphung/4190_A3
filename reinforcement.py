@@ -144,6 +144,10 @@ def newState(self, action):
                 nextState = self.state
             else:
                 nextState = [self.state[0] + 1, self.state[1]]
+    for rocks in boulders:
+        if rocks == nextState:
+            nextState = self.state
+    return nextState
 
 #another helper for the RL/Q value part of this assignment
 def chooseActionStoch(self):
@@ -153,7 +157,21 @@ def chooseActionVIter(self):
     return self
 
 # Helper for the MDP of the assignment
-def valueIter(grid, )
+def valueIter(self, k):
+    t = 0
+    while t < k: #garbage filler code wip
+        if self.terminalCheck:
+            t = 0
+        else:
+            t = 0
+    return t
+
+def terminalCheck(self):
+    for terminalState in terminals:
+        if terminalState == self.state:
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     #Opens files given on command line
