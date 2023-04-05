@@ -78,7 +78,7 @@ def readGridFile(file):
     transition = float(line[1].replace("\n", "")) # Transition Cost
 
 #Reads in a passed grid file and constructs the corrisponding grid
-def getGrid(file):
+def getGrid():
     #Grid to be built
     grid = []
     row = []
@@ -177,26 +177,37 @@ def terminalCheck(self):
 def qLearning():
     #Stored dictionary of q values for each state
     #Stored as [State][Action - 1] where state = [x, y]
-    qValues = {}
+    qValues = []
+    row = []
     myState = []
 
-    #Initalizes q value dictionary
+    #Instantiates q value grid
     #Indexed by a state (x, y) for location and stores a list of qvalues
     #List contains q values according to the action index - 1 (Ex: North is 2, but is stored as 1 in list ect)
+    for i in range(horizontal):
+        row.append([0, 0, 0, 0])
     for i in range(vertical):
-        for k in range(horizontal):
-            qValues[(i,k)]=[0,0,0,0]
-    
+        qValues.append(list(row))
+
+    #Sets Terminal states to only have 1 q value as there is only one action there
+    for term in terminals:
+        qValues[term[0]][term[1]] = 0
+
+    for b in boulders:
+        qValues[b[0]][b[1]] = None
+
     #Sets current state to start state
     myState.append(start[0])
     myState.append(start[1])
 
     #Takes random action and checks
-    #action = numpy.random.choice([1, 2, 3, 4])
-    #action = actualAction(action)
-    #print(action)
-    myState = newState(myState, 1)
+    for i in range(5):
+        action = numpy.random.choice([1, 2, 3, 4])
+        action = actualAction(action)
+        myState = newState(myState, action)
     print(myState)
+
+    printGrid(qValues)
     
 if __name__ == "__main__":
     #Opens files given on command line
@@ -210,7 +221,7 @@ if __name__ == "__main__":
 
     #Reads file in and constructs the grid
     print("Constructing Gridworld:")
-    grid = getGrid(gridFile)
+    grid = getGrid()
     #printGrid(grid)
 
     #Starts QLearning
