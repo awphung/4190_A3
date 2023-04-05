@@ -9,7 +9,7 @@ terminals = []
 boulders = []
 start = []
 state = []
-nextState = []
+#nextState = []
 k = 0
 episodes = 0
 discount = 1
@@ -105,7 +105,7 @@ def printGrid(grid):
         print(grid[i])
 
 #helper function for properly addressing the action taken in the next iteration or episode
-def actualAction(self, action):
+def actualAction(action):
     #1 = east 2 = north 3 = west 4 = south
     actionVal = 0
     match action:
@@ -120,33 +120,34 @@ def actualAction(self, action):
     return actionVal
 
 #this determines the next state for the RL/Q value part of this, WIP
-def newState(self, action):
+def newState(state, action):
     # 1 = east 2 = north 3 = west 4 = south
-    global nextState, state
     match action:
         case 1:
-            if self.state[1] + 1 > horizontal:
-                nextState = self.state
+            if state[1] + 1 > horizontal:
+                nextState = state
             else:
-                nextState = [self.state[0], self.state[1] + 1]
+                nextState = [state[0], state[1] + 1]
         case 2:
-            if self.state[0] - 1 < 0:
-                nextState = self.state
+            if state[0] - 1 < 0:
+                nextState = state
             else:
-                nextState = [self.state[0] - 1, self.state[1]]
+                nextState = [state[0] - 1, state[1]]
         case 3:
-            if self.state[1] - 1 < 0:
-                nextState = self.state
+            if state[1] - 1 < 0:
+                nextState = state
             else:
-                nextState = [self.state[0], self.state[1] - 1]
+                nextState = [state[0], state[1] - 1]
         case 4:
-            if self.state[0] + 1 > vertical:
-                nextState = self.state
+            if state[0] + 1 > vertical:
+                nextState = state
             else:
-                nextState = [self.state[0] + 1, self.state[1]]
+                nextState = [state[0] + 1, state[1]]
+    
+    #Checks if next state is a rock, if so state is changed to stay the same
     for rocks in boulders:
         if rocks == nextState:
-            nextState = self.state
+            nextState = state
     return nextState
 
 #another helper for the RL/Q value part of this assignment
@@ -172,7 +173,31 @@ def terminalCheck(self):
             return True
         else:
             return False
+        
+def qLearning():
+    #Stored dictionary of q values for each state
+    #Stored as [State][Action - 1] where state = [x, y]
+    qValues = {}
+    myState = []
 
+    #Initalizes q value dictionary
+    #Indexed by a state (x, y) for location and stores a list of qvalues
+    #List contains q values according to the action index - 1 (Ex: North is 2, but is stored as 1 in list ect)
+    for i in range(vertical):
+        for k in range(horizontal):
+            qValues[(i,k)]=[0,0,0,0]
+    
+    #Sets current state to start state
+    myState.append(start[0])
+    myState.append(start[1])
+
+    #Takes random action and checks
+    #action = numpy.random.choice([1, 2, 3, 4])
+    #action = actualAction(action)
+    #print(action)
+    myState = newState(myState, 1)
+    print(myState)
+    
 if __name__ == "__main__":
     #Opens files given on command line
     print("Opening files:")
@@ -186,7 +211,10 @@ if __name__ == "__main__":
     #Reads file in and constructs the grid
     print("Constructing Gridworld:")
     grid = getGrid(gridFile)
-    printGrid(grid)
+    #printGrid(grid)
+
+    #Starts QLearning
+    qLearning()
 
     #Closes files
     gridFile.close()
