@@ -73,6 +73,8 @@ def readGridFile(file):
     line = file.readline().split("=")
     discount = float(line[1].replace("\n", ""))   # Discount
     line = file.readline().split("=")
+    alpha = float(line[1].replace("\n", ""))   # alpha
+    line = file.readline().split("=")
     noise = float(line[1].replace("\n", ""))      # Noise
     line = file.readline().split("=")
     transition = float(line[1].replace("\n", "")) # Transition Cost
@@ -167,27 +169,52 @@ def valueIter(self, k):
             t = 0
     return t
 
-def terminalCheck(self):
+def terminalCheck(curr):
+    result = False
     for terminalState in terminals:
-        if terminalState == self.state:
-            return True
-        else:
-            return False
+        if curr[0:2] == terminalState[0:2]:
+            result = True
+    
+    return result
+        
+#Returns an updated q(s, a) for an action a from s
+#The parameters are:
+#   qValue --> The current value of q(s, a) to be changed, this is an int
+#   reward --> The reward of s', the state we wnd up in, this is an int
+#   nextState --> A list of all of a state s' q values
+def updateQValue(qValue, reward, nextState):
+    if type(nextState) is int:
+        return (1 - alpha)*qValue + alpha*(reward + discount*nextState)
+    else:
+        return (1 - alpha)*qValue + alpha*(reward + discount* max(nextState))
         
 def qLearning():
     #Stored dictionary of q values for each state
     #Stored as [State][Action - 1] where state = [x, y]
     qValues = []
-    row = []
-    myState = []
+    qRow = []
+
+    currState = []
+    nextState = []
 
     #Instantiates q value grid
     #Indexed by a state (x, y) for location and stores a list of qvalues
     #List contains q values according to the action index - 1 (Ex: North is 2, but is stored as 1 in list ect)
+    #for i in range(horizontal):
+     #   qRow.append([0, 0, 0, 0])
+      #  rewardRow.append(0)
+    #for i in range(vertical):
+     #   qValues.append(list(qRow))
+      #  rewardList.append(list(rewardRow))
+
     for i in range(horizontal):
-        row.append([0, 0, 0, 0])
+        qRow.append(0)
     for i in range(vertical):
-        qValues.append(list(row))
+        qValues.append(list(qRow))
+    
+    for i in range(horizontal):
+        for k in range(vertical):
+            qValues[i][k] = [0,0,0,0]
 
     #Sets Terminal states to only have 1 q value as there is only one action there
     for term in terminals:
@@ -197,17 +224,42 @@ def qLearning():
         qValues[b[0]][b[1]] = None
 
     #Sets current state to start state
-    myState.append(start[0])
-    myState.append(start[1])
+    currState.append(start[0])
+    currState.append(start[1])
+
+    #MEGA TEST SHIT REMOVE AFTER
+    global noise
+    noise = 0
 
     #Takes random action and checks
-    for i in range(5):
-        action = numpy.random.choice([1, 2, 3, 4])
-        action = actualAction(action)
-        myState = newState(myState, action)
-    print(myState)
+    for i in range(3):
 
+        #If current state is an exit state, only option is to exit
+        if terminalCheck(currState):            
+            qValues[currState[0]][currState[1]] = (1 - alpha) * qValues[currState[0]][currState[1]] + alpha
+
+            #Resets start state
+            currState.append(start[0])
+            currState.append(start[1])
+
+        #Else, moves through world and gets state values
+        else:
+            #Choose action
+            action = numpy.random.choice([1, 2, 3, 4])
+            action = actualAction(action)
+            print("ACTION: ", action)
+
+            #Gets destination state
+            action = 1
+            nextState = newState(currState, action)
+            print("NEXT REACHED: ", nextState)
+
+            #Update q value
+            qValues[currState[0]][currState[1]][action-1] = updateQValue(qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
+            currState = nextState
+    
     printGrid(qValues)
+
     
 if __name__ == "__main__":
     #Opens files given on command line
