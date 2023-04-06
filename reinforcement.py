@@ -223,7 +223,9 @@ def printPolicy(grid):
         print()
         c+=5
           
-
+#Implements the qlearning algorithm
+#Creates a q value grid world and runs the number of episodes given in the file
+#At the enp rpints out the final values and the best policy
 def qLearning():
     #Stored dictionary of q values for each state
     #Stored as [State][Action - 1] where state = [x, y]
