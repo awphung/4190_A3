@@ -126,7 +126,7 @@ def newState(state, action):
     # 1 = east 2 = north 3 = west 4 = south
     match action:
         case 1:
-            if state[1] + 1 > horizontal:
+            if state[1] + 1 >= horizontal:
                 nextState = state
             else:
                 nextState = [state[0], state[1] + 1]
@@ -141,7 +141,7 @@ def newState(state, action):
             else:
                 nextState = [state[0], state[1] - 1]
         case 4:
-            if state[0] + 1 > vertical:
+            if state[0] + 1 >= vertical:
                 nextState = state
             else:
                 nextState = [state[0] + 1, state[1]]
@@ -183,10 +183,10 @@ def terminalCheck(curr):
 #   reward --> The reward of s', the state we wnd up in, this is an int
 #   nextState --> A list of all of a state s' q values
 def updateQValue(qValue, reward, nextState):
-    if type(nextState) is int:
-        return (1 - alpha)*qValue + alpha*(reward + discount*nextState)
-    else:
+    if type(nextState) is list:
         return (1 - alpha)*qValue + alpha*(reward + discount* max(nextState))
+    else:
+        return (1 - alpha)*qValue + alpha*(reward + discount*nextState) 
         
 def qLearning():
     #Stored dictionary of q values for each state
@@ -232,13 +232,20 @@ def qLearning():
     noise = 0
 
     #Takes random action and checks
-    for i in range(3):
-
+    for i in range(100):
         #If current state is an exit state, only option is to exit
-        if terminalCheck(currState):            
-            qValues[currState[0]][currState[1]] = (1 - alpha) * qValues[currState[0]][currState[1]] + alpha
+        if terminalCheck(currState):
+            print("REACHED END, RESTARTING")
+            terminal = []
+
+            for terminalState in terminals:
+                if currState[0:2] == terminalState[0:2]:
+                    terminal = terminalState
+
+            qValues[currState[0]][currState[1]] = (1 - alpha) * qValues[currState[0]][currState[1]] + alpha*terminal[2]
 
             #Resets start state
+            currState = []
             currState.append(start[0])
             currState.append(start[1])
 
@@ -250,11 +257,12 @@ def qLearning():
             print("ACTION: ", action)
 
             #Gets destination state
-            action = 1
             nextState = newState(currState, action)
             print("NEXT REACHED: ", nextState)
 
             #Update q value
+            print(horizontal, vertical)
+            print(currState[0], currState[1], action-1, nextState[0], nextState[1])
             qValues[currState[0]][currState[1]][action-1] = updateQValue(qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
             currState = nextState
     
