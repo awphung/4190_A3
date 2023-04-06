@@ -188,7 +188,42 @@ def updateQValue(qValue, reward, nextState):
         return (1 - alpha)*qValue + alpha*(reward + discount* max(nextState))
     else:
         return (1 - alpha)*qValue + alpha*(reward + discount*nextState) 
-        
+
+#Prints out the current policy using arrows for cardinal directions
+#Takes the best q value at each state to pick the direction
+def printPolicy(grid):
+    output = []
+
+    #Creates output table
+    for i in range(horizontal):
+        for k in range(vertical):
+            if type(grid[i][k]) is list:
+                direction = grid[i][k].index(max(grid[i][k])) + 1
+
+                match direction:
+                    case 1:
+                        output.append('→')
+                    case 2:
+                        output.append('↑')
+                    case 3:
+                        output.append('←')
+                    case 4:
+                        output.append('↓')
+
+            elif grid[i][k] == None:
+                output.append("#")
+            else:
+                output.append("T")
+    
+    #Prints output table
+    c = 0
+    for i in range(horizontal):
+        for k in range(vertical):
+            print(output[k + c], end=' ')
+        print()
+        c+=5
+          
+
 def qLearning():
     #Stored dictionary of q values for each state
     #Stored as [State][Action - 1] where state = [x, y]
@@ -262,6 +297,7 @@ def qLearning():
     
     #Prints final q value grid
     printGrid(qValues)
+    printPolicy(qValues)
 
     
 if __name__ == "__main__":
