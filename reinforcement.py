@@ -45,6 +45,7 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
+        state[0], state[1] = state[1], state[0]
         state = [int(i) for i in state]
 
         # Appends modified state list to the terminals list
@@ -59,6 +60,7 @@ def readGridFile(file):
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
         state = [int(i) for i in state]
+        state[0], state[1] = state[1], state[0]
 
         # Appends modified state list to the boulders list
         boulders.append(state)
@@ -68,8 +70,8 @@ def readGridFile(file):
     # Then splits on ',' to get the two coordinates of the starte state and appends them
     line = file.readline().split("{")
     state = line[1].split("}")[0].split(",")
-    start.append(int(state[0]))
     start.append(int(state[1]))
+    start.append(int(state[0]))
     state = start  # Initializes the state to the starting state of our robot
 
     # MODEL PARAMETERS
@@ -316,6 +318,12 @@ def terminalCheck(curr):
 
     return result
 
+#Returns a new action for the robot to take
+#Gets an action based onm the exploration policy, and adds random noise to it before returning
+def getAction():
+    action = numpy.random.choice([1, 2, 3, 4])
+    action = actualAction(action)
+    return action
 
 # Returns an updated q(s, a) for an action a from s
 # The parameters are:
@@ -323,46 +331,57 @@ def terminalCheck(curr):
 #   reward --> The reward of s', the state we wnd up in, this is an int
 #   nextState --> A list of all of a state s' q values
 def updateQValue(qValue, reward, nextState):
+    #Case 1: state is a regular state, take the best q value
     if type(nextState) is list:
         return (1 - alpha) * qValue + alpha * (reward + discount * max(nextState))
+    
+    #Case 2: State is a terminal state and only has one 1 value
     else:
-
         return (1 - alpha)*qValue + alpha*(reward + discount*nextState) 
 
-#Prints out the current policy using arrows for cardinal directions
-#Takes the best q value at each state to pick the direction
-def printPolicy(grid):
-    output = []
+#Returns a grid that contains the best policy for a q value grid
+#Gets the max q value for each empty cell and assigns it a direction
+def getQPolicy(grid):
+    output = copy.deepcopy(grid)
 
     #Creates output table
-    for i in range(horizontal):
-        for k in range(vertical):
+    for i in range(vertical):
+        for k in range(horizontal):
+            #Case 1: i, k is an empty state
             if type(grid[i][k]) is list:
                 direction = grid[i][k].index(max(grid[i][k])) + 1
 
                 match direction:
                     case 1:
-                        output.append('→')
+                        output[i][k] = '→'
                     case 2:
-                        output.append('↑')
+                        output[i][k] = '↑'
                     case 3:
-                        output.append('←')
+                        output[i][k] = '←'
                     case 4:
-                        output.append('↓')
+                       output[i][k] = '↓'
 
+            #Case 2: i, k is a rock
             elif grid[i][k] == None:
-                output.append("#")
+                output[i][k] = '#'
+
+            #Case 3: i, k is a terminal state
             else:
-                output.append("T")
-    
-    #Prints output table
-    c = 0
-    for i in range(horizontal):
-        for k in range(vertical):
-            print(output[k + c], end=' ')
-        print()
-        c+=5
-          
+                output[i][k] = 'T'
+
+    return output
+
+#Takes in a qvalue grid that indexes starting at 0, 0, and reverses it vertivally to start from (0, vertical - 1)
+def reverseQGrid(grid):
+    #Step 1: Inverts row order
+    grid.reverse()
+
+    #Step 2: Swaps north and south q values
+    for row in grid:
+        for values in row:
+            if type(values) is list:
+                values[1], values[3] = values[3], values[1]
+ 
 #Implements the qlearning algorithm
 #Creates a q value grid world and runs the number of episodes given in the file
 #At the enp rpints out the final values and the best policy
@@ -375,7 +394,6 @@ def qLearning():
     #Keep track of current and next state during processing
     currState = []
     nextState = []
-
 
     #Keeps track of the episode we are on
     currEpisode = 0
@@ -428,8 +446,7 @@ def qLearning():
         #Else, moves through world and gets state values
         else:
             # Choose action
-            action = numpy.random.choice([1, 2, 3, 4])
-            action = actualAction(action)
+            action = getAction()
 
             # Gets destination state
             nextState = newState(currState, action)
@@ -438,9 +455,16 @@ def qLearning():
             qValues[currState[0]][currState[1]][action-1] = updateQValue(qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
             currState = nextState
     
+    #Reverses grid to the preferred orientation
+    reverseQGrid(qValues)
+
     #Prints final q value grid
+    print("Q Value Grid: ")
     printGrid(qValues)
-    printPolicy(qValues)
+    print("Optimal Policy Grid: ")
+    bestPolicy = getQPolicy(qValues)
+    printGrid(bestPolicy)
+    print()
 
 
 if __name__ == "__main__":
@@ -461,16 +485,21 @@ if __name__ == "__main__":
     printGrid(grid)
 
     # Starts Value Iteration
+    print("Starting Value Iteration")
     grid, policyGrid = valueIterationAgent(grid)
+    print("State Value Grid:")
     printGrid(grid)
+    print("Optimal Policy Grid:")
     printGrid(policyGrid)
+    print()
 
     # Starts QLearning
-    #qLearning()
+    print("Starting Q Learning")
+    qLearning()
 
     #mdp query handling
-    grid = getGrid()
-    runMDPQuery(grid)
+    #grid = getGrid()
+    #runMDPQuery(grid)
 
     # Closes files
     gridFile.close()
