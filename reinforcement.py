@@ -395,6 +395,15 @@ def qLearning():
     currState = []
     nextState = []
 
+    #Processes first 3 parts of rl command and parses them to numbers
+    for entries in rlcommand:
+        entries[0] = int(entries[0])
+        entries[1] = int(entries[1])
+        entries[2] = int(entries[2])
+
+    #Stores list of time steps from result.txt to stop processing to query the current state of the machine
+    stopList = [sublist[2] for sublist in rlcommand]
+
     #Keeps track of the episode we are on
     currEpisode = 0
 
@@ -442,6 +451,42 @@ def qLearning():
 
             #Increments episode counter
             currEpisode += 1
+
+            #Checks if previously completed episodes is one of the stop points
+            #If so loops through each command matching the time stamp and processes its query
+            #Answer is appended to the command (Will be stored under index 5)
+            if(currEpisode - 1 in stopList):
+                for command in rlcommand:
+                    if command[2] == currEpisode - 1:
+                        #Gets the entry of the qvalue matrix equal to the coordanites given and matches the query
+                        entry = qValues[command[1]][command[0]]
+                        match command[4]:
+                            #Gets the best q value for the passed coordanites
+                            case "bestQValue":
+                                if type(entry) is list:
+                                    command.append(max(entry))
+                                else:
+                                    command.append(entry)
+                            #Gets the best policy for the passed coordanates
+                            case "bestPolicy":
+                                #Gets the best policy from list of q values
+                                #If 2 values tie, one is randomly selected
+                                if type(entry) is list:
+                                    value = max(entry)
+                                    indexes = [i for i, j in enumerate(entry) if j == value]
+                                    indexes = random.choice(indexes) + 1
+                                    match indexes:
+                                        case 1:
+                                            command.append("Go East")
+                                        case 2:
+                                            command.append("Go South")
+                                        case 3:
+                                            command.append("Go West")
+                                        case 4:
+                                            command.append("Go North")
+                                    
+                                else:
+                                    command.append("Exit")
 
         #Else, moves through world and gets state values
         else:
@@ -500,6 +545,10 @@ if __name__ == "__main__":
     #mdp query handling
     #grid = getGrid()
     #runMDPQuery(grid)
+
+    #Outputs RL Queries
+    print("Q Learning Answers")
+    print(rlcommand)
 
     # Closes files
     gridFile.close()
