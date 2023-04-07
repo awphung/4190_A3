@@ -367,7 +367,7 @@ def getQPolicy(grid):
 
             #Case 3: i, k is a terminal state
             else:
-                output[i][k] = 'T'
+                output[i][k] = 'E'
 
     return output
 
@@ -548,7 +548,8 @@ if __name__ == "__main__":
 
     #Outputs RL Queries
     print("Q Learning Answers")
-    print(rlcommand)
+    for ans in rlcommand:
+        print(ans)
 
     # Closes files
     gridFile.close()
