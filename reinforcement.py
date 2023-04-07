@@ -347,11 +347,20 @@ def getQPolicy(grid):
     #Creates output table
     for i in range(vertical):
         for k in range(horizontal):
+            entry = grid[i][k]
+
             #Case 1: i, k is an empty state
             if type(grid[i][k]) is list:
-                direction = grid[i][k].index(max(grid[i][k])) + 1
 
-                match direction:
+                #Gets max value of q values and gets list of all the occurences of it
+                #If there is only one max, then it is chosen for the policy
+                #If there is more then one, then one is randomly chosen
+                value = max(entry)
+                indexes = [i for i, j in enumerate(entry) if j == value]
+                indexes = random.choice(indexes) + 1
+
+                #Gives direction arrow based on index picked
+                match indexes:
                     case 1:
                         output[i][k] = '→'
                     case 2:
@@ -359,10 +368,10 @@ def getQPolicy(grid):
                     case 3:
                         output[i][k] = '←'
                     case 4:
-                       output[i][k] = '↓'
+                        output[i][k] = '↓'
 
             #Case 2: i, k is a rock
-            elif grid[i][k] == None:
+            elif entry == None:
                 output[i][k] = '#'
 
             #Case 3: i, k is a terminal state
@@ -405,7 +414,7 @@ def qLearning():
     stopList = [sublist[2] for sublist in rlcommand]
 
     #Keeps track of the episode we are on
-    currEpisode = 0
+    currEpisode = 1
 
     #Instantiates q value grid
     #Indexed by a state (x, y) for location and stores a list of qvalues
@@ -431,7 +440,7 @@ def qLearning():
     currState.append(start[1])
 
     #Takes random action and checks
-    while currEpisode < episodes:
+    while currEpisode <= episodes:
         #If current state is an exit state, only option is to exit
         if terminalCheck(currState):
             terminal = []
