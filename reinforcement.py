@@ -272,6 +272,7 @@ def valueIterationAgent(grid):
 
     return grid, policyGrid
 
+#Checks if a state is a terminal state
 def terminalCheck(curr):
     result = False
     for terminalState in terminals:
@@ -290,33 +291,67 @@ def updateQValue(qValue, reward, nextState):
     if type(nextState) is list:
         return (1 - alpha) * qValue + alpha * (reward + discount * max(nextState))
     else:
-        return (1 - alpha) * qValue + alpha * (reward + discount * nextState)
 
+        return (1 - alpha)*qValue + alpha*(reward + discount*nextState) 
 
+#Prints out the current policy using arrows for cardinal directions
+#Takes the best q value at each state to pick the direction
+def printPolicy(grid):
+    output = []
+
+    #Creates output table
+    for i in range(horizontal):
+        for k in range(vertical):
+            if type(grid[i][k]) is list:
+                direction = grid[i][k].index(max(grid[i][k])) + 1
+
+                match direction:
+                    case 1:
+                        output.append('→')
+                    case 2:
+                        output.append('↑')
+                    case 3:
+                        output.append('←')
+                    case 4:
+                        output.append('↓')
+
+            elif grid[i][k] == None:
+                output.append("#")
+            else:
+                output.append("T")
+    
+    #Prints output table
+    c = 0
+    for i in range(horizontal):
+        for k in range(vertical):
+            print(output[k + c], end=' ')
+        print()
+        c+=5
+          
+#Implements the qlearning algorithm
+#Creates a q value grid world and runs the number of episodes given in the file
+#At the enp rpints out the final values and the best policy
 def qLearning():
     # Stored dictionary of q values for each state
     # Stored as [State][Action - 1] where state = [x, y]
     qValues = []
     qRow = []
 
+    #Keep track of current and next state during processing
     currState = []
     nextState = []
 
-    # Instantiates q value grid
-    # Indexed by a state (x, y) for location and stores a list of qvalues
-    # List contains q values according to the action index - 1 (Ex: North is 2, but is stored as 1 in list ect)
-    # for i in range(horizontal):
-    #   qRow.append([0, 0, 0, 0])
-    #  rewardRow.append(0)
-    # for i in range(vertical):
-    #   qValues.append(list(qRow))
-    #  rewardList.append(list(rewardRow))
 
+    #Keeps track of the episode we are on
+    currEpisode = 0
+
+    #Instantiates q value grid
+    #Indexed by a state (x, y) for location and stores a list of qvalues
+    #List contains q values according to the action index - 1 (Ex: North is 2, but is stored as 1 in list ect)
     for i in range(horizontal):
         qRow.append(0)
     for i in range(vertical):
         qValues.append(list(qRow))
-
     for i in range(horizontal):
         for k in range(vertical):
             qValues[i][k] = [0, 0, 0, 0]
@@ -325,6 +360,7 @@ def qLearning():
     for term in terminals:
         qValues[term[0]][term[1]] = 0
 
+    #Sets boulder locations to contain no values
     for b in boulders:
         qValues[b[0]][b[1]] = None
 
@@ -332,48 +368,44 @@ def qLearning():
     currState.append(start[0])
     currState.append(start[1])
 
-    # MEGA TEST SHIT REMOVE AFTER
-    global noise
-    noise = 0
-
-    # Takes random action and checks
-    for i in range(100):
-        # If current state is an exit state, only option is to exit
+    #Takes random action and checks
+    while currEpisode < episodes:
+        #If current state is an exit state, only option is to exit
         if terminalCheck(currState):
-            print("REACHED END, RESTARTING")
             terminal = []
 
+            #Gets the terminal state at currstate
             for terminalState in terminals:
                 if currState[0:2] == terminalState[0:2]:
                     terminal = terminalState
 
-            qValues[currState[0]][currState[1]] = (1 - alpha) * qValues[currState[0]][currState[1]] + alpha * terminal[
-                2]
+            #Updates predicted qvalue of terminal state
+            qValues[currState[0]][currState[1]] = (1 - alpha) * qValues[currState[0]][currState[1]] + alpha*terminal[2]
 
             # Resets start state
             currState = []
             currState.append(start[0])
             currState.append(start[1])
 
-        # Else, moves through world and gets state values
+            #Increments episode counter
+            currEpisode += 1
+
+        #Else, moves through world and gets state values
         else:
             # Choose action
             action = numpy.random.choice([1, 2, 3, 4])
             action = actualAction(action)
-            print("ACTION: ", action)
 
             # Gets destination state
             nextState = newState(currState, action)
-            print("NEXT REACHED: ", nextState)
 
-            # Update q value
-            print(horizontal, vertical)
-            print(currState[0], currState[1], action - 1, nextState[0], nextState[1])
-            qValues[currState[0]][currState[1]][action - 1] = updateQValue(
-                qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
+            #Update q value
+            qValues[currState[0]][currState[1]][action-1] = updateQValue(qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
             currState = nextState
-
+    
+    #Prints final q value grid
     printGrid(qValues)
+    printPolicy(qValues)
 
 
 if __name__ == "__main__":
