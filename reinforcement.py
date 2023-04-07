@@ -13,6 +13,12 @@ state = []
 # nextState = []
 k = 0
 episodes = 0
+mdpk = 0
+rlepisodes = 0
+mdcoord = []
+rlcoord = []
+mdcommand = []
+rlcommand = []
 discount = 1
 alpha = 0.5
 noise = 0
@@ -81,8 +87,37 @@ def readGridFile(file):
     line = file.readline().split("=")
     transition = float(line[1].replace("\n", ""))  # Transition Cost
 
+def readResultFile(file):
+    global mdcommand, rlcommand
+    for line in file:
+        line = line.split(',')
+        line[4] = line[4].strip('\n')
+        if line[3] == 'MDP':
+            mdcommand.append(line)
+        elif line[3] == 'RL':
+            rlcommand.append(line)
+    #mdcommand is the list of lists of mdp commands, rlcommand is the list of lists of rl commands
+    #i'll leave these here so you can mess with the format as you wish
+    #[[1,4,78,MDP,stateValue], [1,4,78,MDP,bestPolicy]] | [[1,4,29,RL,bestQValue], [1,4,29,RL,bestPolicy]]
 
 # Reads in a passed grid file and constructs the corrisponding grid
+
+def flipGrid(grid):
+    return list(reversed(grid))
+
+def runMDPQuery(grid):
+    global mdpk, mdcoord, mdcommand, k
+    row = int(mdcommand[0][1])
+    col = int(mdcommand[0][0])
+    mdpk = int(mdcommand[0][2])
+    k = mdpk
+    valueGrid, policyGrid = valueIterationAgent(grid)
+
+    printGrid(valueGrid)
+    printGrid(policyGrid)
+    mdcommand[0].append(valueGrid[row][col])
+    mdcommand[1].append(policyGrid[row][col])
+
 def getGrid():
     # Grid to be built
     grid = []
@@ -96,11 +131,11 @@ def getGrid():
 
     # Assigns the states given in global lists
     for state in terminals:
-        grid[state[0]][state[1]] = state[2]
+        grid[(vertical - 1) - state[0]][state[1]] = state[2]
 
     # Assigns boulder states
     for state in boulders:
-        grid[state[0]][state[1]] = "#"
+        grid[(vertical - 1) - state[0]][state[1]] = "#"
 
     # Returns completed grid
     return grid
@@ -257,13 +292,13 @@ def valueIterationAgent(grid):
                     # 1 = east 2 = north 3 = west 4 = south
                     match newAction:
                         case 1:
-                            policy[row][col] = '>'
+                            policy[row][col] = '→'
                         case 2:
-                            policy[row][col] = '^'
+                            policy[row][col] = '↑'
                         case 3:
-                            policy[row][col] = '<'
+                            policy[row][col] = '←'
                         case 4:
-                            policy[row][col] = 'v'
+                            policy[row][col] = '↓'
 
                     newValue = computeQValueFromValues(grid, [row,col], newAction)
                     newGrid[row][col] = round(newValue,3)
@@ -412,15 +447,17 @@ if __name__ == "__main__":
     # Opens files given on command line
     print("Opening files:")
     gridFile = open(sys.argv[1])
-    resultFile = ""
+    resultFile = open(sys.argv[2])
 
     # Gets the parameters from the grid file and stores them
     print("Reading Grid Configuration File:")
     readGridFile(gridFile)
+    readResultFile(resultFile)
 
     # Reads file in and constructs the grid
     print("Constructing Gridworld:")
     grid = getGrid()
+    queryGrid = copy.deepcopy(grid)
     printGrid(grid)
 
     # Starts Value Iteration
@@ -430,6 +467,10 @@ if __name__ == "__main__":
 
     # Starts QLearning
     #qLearning()
+
+    #mdp query handling
+    grid = getGrid()
+    runMDPQuery(grid)
 
     # Closes files
     gridFile.close()
