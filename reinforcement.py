@@ -12,7 +12,6 @@ boulders = []
 mdpBoulders = []
 start = []
 state = []
-# nextState = []
 k = 0
 episodes = 0
 mdpk = 0
@@ -47,7 +46,7 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
-
+        # Translates the horizontal and vertical notation to row and column notation
         mdpState = copy.deepcopy(state)
         state[0], state[1] = state[1], state[0]
         mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
@@ -55,6 +54,7 @@ def readGridFile(file):
         mdpState = [int(i) for i in mdpState]
         # Appends modified state list to the terminals list
         terminals.append(state)
+        # MdpTerminals contains the translated coordinates of the terminal states
         mdpTerminals.append(mdpState)
 
     # Gets boulder states
@@ -66,6 +66,7 @@ def readGridFile(file):
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
         mdpState = copy.deepcopy(state)
+        # Translates from horizontal and vertical to row and column again
         mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
         state = [int(i) for i in state]
 
@@ -75,6 +76,7 @@ def readGridFile(file):
 
         # Appends modified state list to the boulders list
         boulders.append(state)
+        # Appends translated coordinates list to mdpBoulders list
         mdpBoulders.append(mdpState)
 
     # Gets start state
@@ -101,6 +103,8 @@ def readGridFile(file):
     line = file.readline().split("=")
     transition = float(line[1].replace("\n", ""))  # Transition Cost
 
+# Reads in the result.txt file used for evaluating various queries
+# Processes the queries into two lists, one for MDP and one for RL
 def readResultFile(file):
     global mdcommand, rlcommand
     for line in file:
@@ -110,21 +114,20 @@ def readResultFile(file):
             mdcommand.append(line)
         elif line[3] == 'RL':
             rlcommand.append(line)
-    #mdcommand is the list of lists of mdp commands, rlcommand is the list of lists of rl commands
-    #i'll leave these here so you can mess with the format as you wish
-    #[[1,4,78,MDP,stateValue], [1,4,78,MDP,bestPolicy]] | [[1,4,29,RL,bestQValue], [1,4,29,RL,bestPolicy]]
 
-# Reads in a passed grid file and constructs the corrisponding grid
-
-def flipGrid(grid):
-    return list(reversed(grid))
-
+# Processes the queries in the mdcommand list
+# Executes value iteration for mdpk steps
+# Appends the result of each MDP query to the command
 def runMDPQuery(grid):
     global mdpk, mdcoord, mdcommand, k, vertical
+    # Translates from horizontal and vertical notation to row and column notation
     row = (vertical - 1) - int(mdcommand[0][1])
     col = int(mdcommand[0][0])
+    # Sets the number of iterations it should process, given from the query
     mdpk = int(mdcommand[0][2])
+    # Runs the value iteration for mdpk steps
     valueGrid, policyGrid = valueIterationAgent(grid, mdpk)
+    # Translates the policy grid result to plain english
     match policyGrid[row][col]:
         case '←':
             mdcommand[1].append('Go West')
@@ -137,6 +140,7 @@ def runMDPQuery(grid):
         case 'E':
             mdcommand[1].append('Exit')
 
+    # Appends the value of the specified cell here
     mdcommand[0].append(valueGrid[row][col])
 
 def getGrid():
@@ -167,7 +171,8 @@ def printGrid(grid):
         print(grid[i])
 
 
-# helper function for properly addressing the action taken in the next iteration or episode
+# Helper function for properly addressing the action taken in the next iteration or episode
+# Takes into account noise
 def actualAction(action):
     # 1 = east 2 = north 3 = west 4 = south
     actionVal = 0
@@ -182,7 +187,8 @@ def actualAction(action):
             actionVal = numpy.random.choice([4, 3, 1], p=[1 - noise, noise / 2, noise / 2])
     return actionVal
 
-
+# Returns a list of the possible actions that can be taken given the chosen action
+# Rule being, one cannot go in the opposite direction they've chosen
 def getPossibleActions(action):
     # 1 = east 2 = north 3 = west 4 = south
     actions = []
@@ -206,7 +212,7 @@ def getPossibleActions(action):
     return actions
 
 
-# this determines the next state for the RL/Q value part of this, WIP
+# This determines the next state for the RL/Q value part of the algorithm
 def newState(state, action):
     # 1 = east 2 = north 3 = west 4 = south
     match action:
@@ -231,24 +237,21 @@ def newState(state, action):
             else:
                 nextState = [state[0] + 1, state[1]]
 
-    # Checks if next state is a rock, if so state is changed to stay the same
+    # Checks if next state is a rock, if so state is set back to original state, not having moved
     for rocks in boulders:
         if rocks == nextState:
             nextState = state
     return nextState
 
-
-# another helper for the RL/Q value part of this assignment
-def chooseActionStoch(self):
-    return numpy.choice([1, 2, 3, 4])
-
-
+# Returns the value for the given state, returns 0 if a boulder is passed, which is shouldn't
 def getValueFromState(grid, state):
     if grid[state[0]][state[1]] != '#':
         return grid[state[0]][state[1]]
     return 0
 
-
+# Function that grabs the safest action away from the minimal value
+# Used to combat policy from suggesting we walk into a negative terminal state
+# Effectively returns the opposite action from the given action
 def grabSafeAction(action):
     # 1 = east 2 = north 3 = west 4 = south
     safe = 0
@@ -263,51 +266,65 @@ def grabSafeAction(action):
             safe = 2
     return safe
 
+# Computes the action we should take given the values available to us in this state
 def computeActionFromValues(grid, state):
     actions = []
     actionVals = []
+    # We get a list of all states we visit in all 4 directions
     for i in range(4):
         nextState = newState(state, i + 1)
         actions.append(nextState)
+    # We iterate over all of these states, determining their values
     for actionState in actions:
         val = getValueFromState(grid, actionState)
         actionVals.append(val)
+    # Here we determine our final action based on the index of the highest value returned from visiting a state
     finalAction = actionVals.index(max(actionVals)) + 1
     maxVal = max(actionVals)
     tie = []
+    # If there are identical max values we append them here
     for test in actionVals:
         if test == maxVal:
             tie.append(test)
+    # If there are more than 2 identical max values, this means there is only one way to proceed to avoid the min value
+    # The opposite direction of the minimum value given from the states
     if len(tie) > 2:
         minAction = min(actionVals) + 1
         finalAction = grabSafeAction(minAction) + 1
     return finalAction
 
-
+# Computes the value we are going to assign this state after this iteration of value iteration
 def computeQValueFromValues(grid, state, action):
     global noise, transition, discount
     reachedStates = []
     values = []
+    # Grabs all the possible actions from this action direction
     actions = getPossibleActions(action)
+    # Iterates through them, appending the states we reach into the reachedStates list
     for nextAction in actions:
         reachedStates.append(newState(state, nextAction))
+    # Iterates through the reached states, appending their values to values list
     for reachedState in reachedStates:
         values.append(getValueFromState(grid, reachedState))
 
+    # Calculates the value to assign this state from the summation of all possible actions' states
+    # This is just the bellman equation
     valueForThisState = (1-noise)*(transition + (discount*values[0])) + (noise/2)*(transition + (discount*values[1])) + (noise/2)*(transition + (discount*values[2]))
     return valueForThisState
 
 
-# Helper for the MDP of the assignment
+# ValueIterationAgent for this assignment
 def valueIterationAgent(grid, iterations):
     global  horizontal, vertical, discount, transition, boulders, terminals
     policyGrid = []
     for i in range(iterations):
+        # We preserve the original states of the grid and clone to update for the next iteration
         newGrid = copy.deepcopy(grid)
         policy = copy.deepcopy(newGrid)
         for row in range(vertical):
             for col in range(horizontal):
                 isTerm = terminalCheckMDP([row, col])
+                # If the state isn't a boulder or a terminal state, we perform calculations
                 if newGrid[row][col] != '#' and isTerm is False:
                     newAction = computeActionFromValues(grid, [row, col])
                     # 1 = east 2 = north 3 = west 4 = south
@@ -322,6 +339,7 @@ def valueIterationAgent(grid, iterations):
                             policy[row][col] = '↓'
 
                     newValue = computeQValueFromValues(grid, [row, col], newAction)
+                    # Rounds the values to 3 decimal points
                     newGrid[row][col] = round(newValue,3)
                 elif isTerm is True:
                     policy[row][col] = 'E'
@@ -338,7 +356,7 @@ def terminalCheck(curr):
 
     return result
 
-
+#Checks if a state is a terminal state, using translated coordinates
 def terminalCheckMDP(curr):
     result = False
     for terminalState in mdpTerminals:
