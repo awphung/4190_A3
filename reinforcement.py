@@ -36,7 +36,6 @@ def readGridFile(file):
     horizontal = int(line[1].replace("\n", ""))
     line = file.readline().split("=")
     vertical = int(line[1].replace("\n", ""))
-    print(vertical)
 
     # STATES
     # Gets terminal states
@@ -48,7 +47,7 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
-        mdp_result_handling
+
         mdpState = copy.deepcopy(state)
         state[0], state[1] = state[1], state[0]
         mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
@@ -69,9 +68,8 @@ def readGridFile(file):
         mdpState = copy.deepcopy(state)
         mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
         state = [int(i) for i in state]
-mdp_result_handling
+
         mdpState = [int(i) for i in mdpState]
-        print(mdpState)
 
         state[0], state[1] = state[1], state[0]
 
@@ -127,9 +125,19 @@ def runMDPQuery(grid):
     col = int(mdcommand[0][0])
     mdpk = int(mdcommand[0][2])
     valueGrid, policyGrid = valueIterationAgent(grid, mdpk)
+    match policyGrid[row][col]:
+        case '←':
+            mdcommand[1].append('Go West')
+        case '↑':
+            mdcommand[1].append('Go North')
+        case '→':
+            mdcommand[1].append('Go East')
+        case '↓':
+            mdcommand[1].append('Go South')
+        case 'E':
+            mdcommand[1].append('Exit')
 
     mdcommand[0].append(valueGrid[row][col])
-    mdcommand[1].append(policyGrid[row][col])
 
 def getGrid():
     # Grid to be built
@@ -579,17 +587,14 @@ if __name__ == "__main__":
 
     # Starts Value Iteration
 
-    mdpgrid, policyGrid = valueIterationAgent(grid, k)
-    printGrid(mdpgrid)
-
     print("Starting Value Iteration")
-    grid, policyGrid = valueIterationAgent(grid)
+    mdpgrid, policyGrid = valueIterationAgent(grid, k)
+
     print("State Value Grid:")
-    printGrid(grid)
+    printGrid(mdpgrid)
     print("Optimal Policy Grid:")
 
     printGrid(policyGrid)
-    print()
 
     # Starts QLearning
     print("Starting Q Learning")
