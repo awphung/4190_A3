@@ -45,6 +45,7 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
+        state[0], state[1] = state[1], state[0]
         state = [int(i) for i in state]
 
         # Appends modified state list to the terminals list
@@ -59,6 +60,7 @@ def readGridFile(file):
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
         state = [int(i) for i in state]
+        state[0], state[1] = state[1], state[0]
 
         # Appends modified state list to the boulders list
         boulders.append(state)
@@ -68,8 +70,8 @@ def readGridFile(file):
     # Then splits on ',' to get the two coordinates of the starte state and appends them
     line = file.readline().split("{")
     state = line[1].split("}")[0].split(",")
-    start.append(int(state[0]))
     start.append(int(state[1]))
+    start.append(int(state[0]))
     state = start  # Initializes the state to the starting state of our robot
 
     # MODEL PARAMETERS
@@ -316,6 +318,27 @@ def terminalCheck(curr):
 
     return result
 
+#Returns a new action for the robot to take
+#Gets an action based onm the exploration policy, and adds random noise to it before returning
+def getAction():
+    action = numpy.random.choice([1, 2, 3, 4])
+    action = actualAction(action)
+    return action
+
+#Optional method call
+#Takes in a q value grid and rounds the values to 3 decimal places
+#Usefull for readability during output, butfor accuracy do not call until output is needed
+def roundQvalues(values):
+    decNum = 3
+
+    for row in values:
+        for entry in range(horizontal):
+            if type(row[entry]) is list:
+                for i in range(4):
+                    row[entry][i] = round(row[entry][i], decNum)
+            elif type(row[entry]) is float:
+                row[entry] = round(row[entry], decNum)
+
 
 # Returns an updated q(s, a) for an action a from s
 # The parameters are:
@@ -323,46 +346,66 @@ def terminalCheck(curr):
 #   reward --> The reward of s', the state we wnd up in, this is an int
 #   nextState --> A list of all of a state s' q values
 def updateQValue(qValue, reward, nextState):
+    #Case 1: state is a regular state, take the best q value
     if type(nextState) is list:
         return (1 - alpha) * qValue + alpha * (reward + discount * max(nextState))
+    
+    #Case 2: State is a terminal state and only has one 1 value
     else:
-
         return (1 - alpha)*qValue + alpha*(reward + discount*nextState) 
 
-#Prints out the current policy using arrows for cardinal directions
-#Takes the best q value at each state to pick the direction
-def printPolicy(grid):
-    output = []
+#Returns a grid that contains the best policy for a q value grid
+#Gets the max q value for each empty cell and assigns it a direction
+def getQPolicy(grid):
+    output = copy.deepcopy(grid)
 
     #Creates output table
-    for i in range(horizontal):
-        for k in range(vertical):
+    for i in range(vertical):
+        for k in range(horizontal):
+            entry = grid[i][k]
+
+            #Case 1: i, k is an empty state
             if type(grid[i][k]) is list:
-                direction = grid[i][k].index(max(grid[i][k])) + 1
 
-                match direction:
+                #Gets max value of q values and gets list of all the occurences of it
+                #If there is only one max, then it is chosen for the policy
+                #If there is more then one, then one is randomly chosen
+                value = max(entry)
+                indexes = [i for i, j in enumerate(entry) if j == value]
+                indexes = random.choice(indexes) + 1
+
+                #Gives direction arrow based on index picked
+                match indexes:
                     case 1:
-                        output.append('→')
+                        output[i][k] = '→'
                     case 2:
-                        output.append('↑')
+                        output[i][k] = '↑'
                     case 3:
-                        output.append('←')
+                        output[i][k] = '←'
                     case 4:
-                        output.append('↓')
+                        output[i][k] = '↓'
 
-            elif grid[i][k] == None:
-                output.append("#")
+            #Case 2: i, k is a rock
+            elif entry == None:
+                output[i][k] = '#'
+
+            #Case 3: i, k is a terminal state
             else:
-                output.append("T")
-    
-    #Prints output table
-    c = 0
-    for i in range(horizontal):
-        for k in range(vertical):
-            print(output[k + c], end=' ')
-        print()
-        c+=5
-          
+                output[i][k] = 'E'
+
+    return output
+
+#Takes in a qvalue grid that indexes starting at 0, 0, and reverses it vertivally to start from (0, vertical - 1)
+def reverseQGrid(grid):
+    #Step 1: Inverts row order
+    grid.reverse()
+
+    #Step 2: Swaps north and south q values
+    for row in grid:
+        for values in row:
+            if type(values) is list:
+                values[1], values[3] = values[3], values[1]
+ 
 #Implements the qlearning algorithm
 #Creates a q value grid world and runs the number of episodes given in the file
 #At the enp rpints out the final values and the best policy
@@ -376,9 +419,17 @@ def qLearning():
     currState = []
     nextState = []
 
+    #Processes first 3 parts of rl command and parses them to numbers
+    for entries in rlcommand:
+        entries[0] = int(entries[0])
+        entries[1] = int(entries[1])
+        entries[2] = int(entries[2])
+
+    #Stores list of time steps from result.txt to stop processing to query the current state of the machine
+    stopList = [sublist[2] for sublist in rlcommand]
 
     #Keeps track of the episode we are on
-    currEpisode = 0
+    currEpisode = 1
 
     #Instantiates q value grid
     #Indexed by a state (x, y) for location and stores a list of qvalues
@@ -404,7 +455,7 @@ def qLearning():
     currState.append(start[1])
 
     #Takes random action and checks
-    while currEpisode < episodes:
+    while currEpisode <= episodes:
         #If current state is an exit state, only option is to exit
         if terminalCheck(currState):
             terminal = []
@@ -425,11 +476,46 @@ def qLearning():
             #Increments episode counter
             currEpisode += 1
 
+            #Checks if previously completed episodes is one of the stop points
+            #If so loops through each command matching the time stamp and processes its query
+            #Answer is appended to the command (Will be stored under index 5)
+            if(currEpisode - 1 in stopList):
+                for command in rlcommand:
+                    if command[2] == currEpisode - 1:
+                        #Gets the entry of the qvalue matrix equal to the coordanites given and matches the query
+                        entry = qValues[command[1]][command[0]]
+                        match command[4]:
+                            #Gets the best q value for the passed coordanites
+                            case "bestQValue":
+                                if type(entry) is list:
+                                    command.append(max(entry))
+                                else:
+                                    command.append(entry)
+                            #Gets the best policy for the passed coordanates
+                            case "bestPolicy":
+                                #Gets the best policy from list of q values
+                                #If 2 values tie, one is randomly selected
+                                if type(entry) is list:
+                                    value = max(entry)
+                                    indexes = [i for i, j in enumerate(entry) if j == value]
+                                    indexes = random.choice(indexes) + 1
+                                    match indexes:
+                                        case 1:
+                                            command.append("Go East")
+                                        case 2:
+                                            command.append("Go South")
+                                        case 3:
+                                            command.append("Go West")
+                                        case 4:
+                                            command.append("Go North")
+                                    
+                                else:
+                                    command.append("Exit")
+
         #Else, moves through world and gets state values
         else:
             # Choose action
-            action = numpy.random.choice([1, 2, 3, 4])
-            action = actualAction(action)
+            action = getAction()
 
             # Gets destination state
             nextState = newState(currState, action)
@@ -438,9 +524,18 @@ def qLearning():
             qValues[currState[0]][currState[1]][action-1] = updateQValue(qValues[currState[0]][currState[1]][action - 1], transition, qValues[nextState[0]][nextState[1]])
             currState = nextState
     
+    #Reverses grid to the preferred orientation
+    reverseQGrid(qValues)
+
+    #Rounds q values to 2 decimal places for output
+    roundQvalues(qValues)
+
     #Prints final q value grid
+    print("Q Value Grid: ")
     printGrid(qValues)
-    printPolicy(qValues)
+    print("Optimal Policy Grid: ")
+    printGrid(getQPolicy(qValues))
+    print()
 
 
 if __name__ == "__main__":
@@ -461,16 +556,26 @@ if __name__ == "__main__":
     printGrid(grid)
 
     # Starts Value Iteration
+    print("Starting Value Iteration")
     grid, policyGrid = valueIterationAgent(grid)
+    print("State Value Grid:")
     printGrid(grid)
+    print("Optimal Policy Grid:")
     printGrid(policyGrid)
+    print()
 
     # Starts QLearning
-    #qLearning()
+    print("Starting Q Learning")
+    qLearning()
 
     #mdp query handling
-    grid = getGrid()
-    runMDPQuery(grid)
+    #grid = getGrid()
+    #runMDPQuery(grid)
+
+    #Outputs RL Queries
+    print("Q Learning Answers")
+    for ans in rlcommand:
+        print(ans)
 
     # Closes files
     gridFile.close()
