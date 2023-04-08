@@ -325,6 +325,21 @@ def getAction():
     action = actualAction(action)
     return action
 
+#Optional method call
+#Takes in a q value grid and rounds the values to 3 decimal places
+#Usefull for readability during output, butfor accuracy do not call until output is needed
+def roundQvalues(values):
+    decNum = 3
+
+    for row in values:
+        for entry in range(horizontal):
+            if type(row[entry]) is list:
+                for i in range(4):
+                    row[entry][i] = round(row[entry][i], decNum)
+            elif type(row[entry]) is float:
+                row[entry] = round(row[entry], decNum)
+
+
 # Returns an updated q(s, a) for an action a from s
 # The parameters are:
 #   qValue --> The current value of q(s, a) to be changed, this is an int
@@ -512,12 +527,14 @@ def qLearning():
     #Reverses grid to the preferred orientation
     reverseQGrid(qValues)
 
+    #Rounds q values to 2 decimal places for output
+    roundQvalues(qValues)
+
     #Prints final q value grid
     print("Q Value Grid: ")
     printGrid(qValues)
     print("Optimal Policy Grid: ")
-    bestPolicy = getQPolicy(qValues)
-    printGrid(bestPolicy)
+    printGrid(getQPolicy(qValues))
     print()
 
 
