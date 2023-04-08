@@ -7,7 +7,9 @@ import copy
 horizontal = 1
 vertical = 1
 terminals = []
+mdpTerminals = []
 boulders = []
+mdpBoulders = []
 start = []
 state = []
 # nextState = []
@@ -34,6 +36,7 @@ def readGridFile(file):
     horizontal = int(line[1].replace("\n", ""))
     line = file.readline().split("=")
     vertical = int(line[1].replace("\n", ""))
+    print(vertical)
 
     # STATES
     # Gets terminal states
@@ -45,11 +48,15 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
+        mdp_result_handling
+        mdpState = copy.deepcopy(state)
         state[0], state[1] = state[1], state[0]
+        mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
         state = [int(i) for i in state]
-
+        mdpState = [int(i) for i in mdpState]
         # Appends modified state list to the terminals list
         terminals.append(state)
+        mdpTerminals.append(mdpState)
 
     # Gets boulder states
     line = file.readline().split("{")  # Splits line on "{" to make a list
@@ -59,11 +66,18 @@ def readGridFile(file):
 
         # Splits state on ","" to get elements and converts them all to ints
         state = state.split(",")
+        mdpState = copy.deepcopy(state)
+        mdpState[0], mdpState[1] = (vertical - 1) - int(mdpState[1]), mdpState[0]
         state = [int(i) for i in state]
+mdp_result_handling
+        mdpState = [int(i) for i in mdpState]
+        print(mdpState)
+
         state[0], state[1] = state[1], state[0]
 
         # Appends modified state list to the boulders list
         boulders.append(state)
+        mdpBoulders.append(mdpState)
 
     # Gets start state
     # Reads in line and splits string on curly braces
@@ -108,15 +122,12 @@ def flipGrid(grid):
     return list(reversed(grid))
 
 def runMDPQuery(grid):
-    global mdpk, mdcoord, mdcommand, k
-    row = int(mdcommand[0][1])
+    global mdpk, mdcoord, mdcommand, k, vertical
+    row = (vertical - 1) - int(mdcommand[0][1])
     col = int(mdcommand[0][0])
     mdpk = int(mdcommand[0][2])
-    k = mdpk
-    valueGrid, policyGrid = valueIterationAgent(grid)
+    valueGrid, policyGrid = valueIterationAgent(grid, mdpk)
 
-    printGrid(valueGrid)
-    printGrid(policyGrid)
     mdcommand[0].append(valueGrid[row][col])
     mdcommand[1].append(policyGrid[row][col])
 
@@ -132,12 +143,12 @@ def getGrid():
         grid.append(list(row))
 
     # Assigns the states given in global lists
-    for state in terminals:
-        grid[(vertical - 1) - state[0]][state[1]] = state[2]
+    for state in mdpTerminals:
+        grid[state[0]][state[1]] = state[2]
 
     # Assigns boulder states
-    for state in boulders:
-        grid[(vertical - 1) - state[0]][state[1]] = "#"
+    for state in mdpBoulders:
+        grid[state[0]][state[1]] = "#"
 
     # Returns completed grid
     return grid
@@ -280,16 +291,16 @@ def computeQValueFromValues(grid, state, action):
 
 
 # Helper for the MDP of the assignment
-def valueIterationAgent(grid):
-    global k, horizontal, vertical, discount, transition, boulders, terminals
+def valueIterationAgent(grid, iterations):
+    global  horizontal, vertical, discount, transition, boulders, terminals
     policyGrid = []
-    for i in range(k):
+    for i in range(iterations):
         newGrid = copy.deepcopy(grid)
         policy = copy.deepcopy(newGrid)
         for row in range(vertical):
             for col in range(horizontal):
-                isTerm = terminalCheck([row, col])
-                if newGrid[row][col] != '#' and isTerm == False:
+                isTerm = terminalCheckMDP([row, col])
+                if newGrid[row][col] != '#' and isTerm is False:
                     newAction = computeActionFromValues(grid, [row, col])
                     # 1 = east 2 = north 3 = west 4 = south
                     match newAction:
@@ -302,17 +313,27 @@ def valueIterationAgent(grid):
                         case 4:
                             policy[row][col] = '↓'
 
-                    newValue = computeQValueFromValues(grid, [row,col], newAction)
+                    newValue = computeQValueFromValues(grid, [row, col], newAction)
                     newGrid[row][col] = round(newValue,3)
+                elif isTerm is True:
+                    policy[row][col] = 'E'
         grid = copy.deepcopy(newGrid)
         policyGrid = copy.deepcopy(policy)
-
     return grid, policyGrid
 
 #Checks if a state is a terminal state
 def terminalCheck(curr):
     result = False
     for terminalState in terminals:
+        if curr[0:2] == terminalState[0:2]:
+            result = True
+
+    return result
+
+
+def terminalCheckMDP(curr):
+    result = False
+    for terminalState in mdpTerminals:
         if curr[0:2] == terminalState[0:2]:
             result = True
 
@@ -338,6 +359,7 @@ def roundQvalues(values):
                     row[entry][i] = round(row[entry][i], decNum)
             elif type(row[entry]) is float:
                 row[entry] = round(row[entry], decNum)
+
 
 
 # Returns an updated q(s, a) for an action a from s
@@ -556,11 +578,16 @@ if __name__ == "__main__":
     printGrid(grid)
 
     # Starts Value Iteration
+
+    mdpgrid, policyGrid = valueIterationAgent(grid, k)
+    printGrid(mdpgrid)
+
     print("Starting Value Iteration")
     grid, policyGrid = valueIterationAgent(grid)
     print("State Value Grid:")
     printGrid(grid)
     print("Optimal Policy Grid:")
+
     printGrid(policyGrid)
     print()
 
@@ -570,12 +597,17 @@ if __name__ == "__main__":
 
     #mdp query handling
     #grid = getGrid()
-    #runMDPQuery(grid)
+
+    runMDPQuery(grid)
+    print("Value iteration query results:")
+    for mdpResult in mdcommand:
+        print(mdpResult)
 
     #Outputs RL Queries
     print("Q Learning Answers")
     for ans in rlcommand:
         print(ans)
+
 
     # Closes files
     gridFile.close()
