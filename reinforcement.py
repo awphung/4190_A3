@@ -1,3 +1,7 @@
+# REINFORCEMENT.py
+# Takes in a grid world from a passed text file and computes a MDP to find the optimal policy, and then runs a random walk reinforcement learning algorithim to find the optimal policy
+# State weight and optimal policy grids are outputted for each model 
+
 import sys
 import numpy
 import random
@@ -12,7 +16,6 @@ boulders = []
 mdpBoulders = []
 start = []
 state = []
-# nextState = []
 k = 0
 episodes = 0
 mdpk = 0
@@ -436,6 +439,24 @@ def reverseQGrid(grid):
             if type(values) is list:
                 values[1], values[3] = values[3], values[1]
  
+# Returns a grid of the best qvalue in each state of a passed grid
+# Ignores rocks and terminal states
+def getBestQvalue(grid):
+    out = []
+    r = []
+
+    for row in range(vertical):
+        for entry in range(horizontal):
+            if type(grid[row][entry]) is list:
+                r.append(max(grid[row][entry]))
+            else:
+                r.append(grid[row][entry])
+        
+        out.append(list(r))
+        r = []
+    
+    return out
+
 #Implements the qlearning algorithm
 #Creates a q value grid world and runs the number of episodes given in the file
 #At the enp rpints out the final values and the best policy
@@ -562,7 +583,10 @@ def qLearning():
 
     #Prints final q value grid
     print("Q Value Grid: ")
+    print("Each q value set corrisponds to [East, North, West, South]")
     printGrid(qValues)
+    print("Best Q Value in each state:")
+    printGrid(getBestQvalue(qValues))
     print("Optimal Policy Grid: ")
     printGrid(getQPolicy(qValues))
     print()
@@ -584,25 +608,23 @@ if __name__ == "__main__":
     grid = getGrid()
     queryGrid = copy.deepcopy(grid)
     printGrid(grid)
+    print()
 
     # Starts Value Iteration
-
     print("Starting Value Iteration")
     mdpgrid, policyGrid = valueIterationAgent(grid, k)
 
     print("State Value Grid:")
     printGrid(mdpgrid)
     print("Optimal Policy Grid:")
-
     printGrid(policyGrid)
+    print()
 
     # Starts QLearning
     print("Starting Q Learning")
     qLearning()
 
-    #mdp query handling
-    #grid = getGrid()
-
+    #Runs MDP query algorithim and outputs the result
     runMDPQuery(grid)
     print("Value iteration query results:")
     for mdpResult in mdcommand:
@@ -613,6 +635,6 @@ if __name__ == "__main__":
     for ans in rlcommand:
         print(ans)
 
-
     # Closes files
     gridFile.close()
+    resultFile.close()
